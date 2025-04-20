@@ -1,8 +1,6 @@
-# EDM: E(3) Equivariant Diffusion Model for Molecule Generation in 3D.
+# Heat kernel diffusion for 3D structure super resolution
 
-<img src="equivariant_diffusion/overview.png" width="400">
-
-Official code release for the paper Equivariant Diffusion for Molecule Generation in 3D.
+Code adadpted from e3_diffusion_for_molecules.
 
 **If** you want to set-up a rdkit environment, it may be easiest to install conda and run:
 ``conda create -c conda-forge -n my-rdkit-env rdkit``
