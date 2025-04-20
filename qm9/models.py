@@ -4,7 +4,7 @@ from torch.distributions.categorical import Categorical
 import numpy as np
 from egnn.models import EGNN_dynamics_QM9
 
-from equivariant_diffusion.en_diffusion import EnVariationalDiffusion
+from equivariant_diffusion.denoise_diffusion import EnVariationalDiffusion
 
 
 def get_model(args, device, dataset_info, dataloader_train):

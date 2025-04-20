@@ -8,6 +8,19 @@ def sum_except_batch(x):
 def assert_correctly_masked(variable, node_mask):
     assert (variable * (1 - node_mask)).abs().sum().item() < 1e-8
 
+def compute_denoise_loss(args, generative_model, nodes_dist, x, h, node_mask, edge_mask, context):
+    bs, n_nodes, n_dims = x.size()
+    edge_mask = edge_mask.view(bs, n_nodes * n_nodes)
+    assert_correctly_masked(x, node_mask)
+    
+    loss = generative_model(x, h, node_mask, edge_mask, context)
+
+    if loss.dim() > 0 and len(loss) > 1:
+        loss = torch.mean(loss)
+    return loss 
+
+
+
 
 def compute_loss_and_nll(args, generative_model, nodes_dist, x, h, node_mask, edge_mask, context):
     bs, n_nodes, n_dims = x.size()
@@ -21,6 +34,7 @@ def compute_loss_and_nll(args, generative_model, nodes_dist, x, h, node_mask, ed
         # Here x is a position tensor, and h is a dictionary with keys
         # 'categorical' and 'integer'.
         nll = generative_model(x, h, node_mask, edge_mask, context)
+       
 
         N = node_mask.squeeze(2).sum(1).long()
 

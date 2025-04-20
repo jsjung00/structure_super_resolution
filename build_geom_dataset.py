@@ -5,6 +5,8 @@ import torch
 from torch.utils.data import BatchSampler, DataLoader, Dataset, SequentialSampler
 import argparse
 from qm9.data import collate as qm9_collate
+from tqdm import tqdm 
+from itertools import islice
 
 
 def extract_conformers(args):
@@ -21,7 +23,7 @@ def extract_conformers(args):
     mol_id = 0
     for i, drugs_1k in enumerate(unpacker):
         print(f"Unpacking file {i}...")
-        for smiles, all_info in drugs_1k.items():
+        for smiles, all_info in islice(drugs_1k.items(), 100):
             all_smiles.append(smiles)
             conformers = all_info['conformers']
             # Get the energy of each conformer. Keep only the lowest values
@@ -89,7 +91,9 @@ def load_split_data(conformation_file, val_proportion=0.1, test_proportion=0.1,
         assert len(data_list) > 0, 'No molecules left after filter.'
 
     # CAREFUL! Only for first time run:
-    # perm = np.random.permutation(len(data_list)).astype('int32')
+    #perm = np.random.permutation(len(data_list)).astype('int32')
+    #np.save(os.path.join(base_path, 'geom_permutation_10.npy'), perm)
+    #del perm
     # print('Warning, currently taking a random permutation for '
     #       'train/val/test partitions, this needs to be fixed for'
     #       'reproducibility.')
@@ -97,13 +101,17 @@ def load_split_data(conformation_file, val_proportion=0.1, test_proportion=0.1,
     # np.save(os.path.join(base_path, 'geom_permutation.npy'), perm)
     # del perm
 
-    perm = np.load(os.path.join(base_path, 'geom_permutation.npy'))
+    perm = np.load(os.path.join(base_path, 'geom_permutation_10.npy'))
     data_list = [data_list[i] for i in perm]
 
     num_mol = len(data_list)
     val_index = int(num_mol * val_proportion)
     test_index = val_index + int(num_mol * test_proportion)
-    val_data, test_data, train_data = np.split(data_list, [val_index, test_index])
+    
+    val_data = data_list[:val_index]
+    test_data = data_list[val_index: val_index + test_index]
+    train_data = data_list[val_index + test_index:]
+    #val_data, test_data, train_data = np.split(data_list, np.array([val_index, test_index]))
     return train_data, val_data, test_data
 
 
@@ -238,7 +246,9 @@ if __name__ == '__main__':
     parser.add_argument("--conformations", type=int, default=30,
                         help="Max number of conformations kept for each molecule.")
     parser.add_argument("--remove_h", action='store_true', help="Remove hydrogens from the dataset.")
-    parser.add_argument("--data_dir", type=str, default='~/diffusion/data/geom/')
+    parser.add_argument("--data_dir", type=str, default='data/geom/')
     parser.add_argument("--data_file", type=str, default="drugs_crude.msgpack")
     args = parser.parse_args()
-    extract_conformers(args)
+    #extract_conformers(args)
+
+    #load_split_data('/mnt/justin/structure_super_resolution/data/geom/geom_drugs_10.npy')

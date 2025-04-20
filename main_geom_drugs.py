@@ -11,7 +11,7 @@ import argparse
 import wandb
 from os.path import join
 from qm9.models import get_optim, get_model
-from equivariant_diffusion import en_diffusion
+from equivariant_diffusion import en_diffusion, denoise_diffusion
 
 from equivariant_diffusion import utils as diffusion_utils
 import torch
@@ -23,7 +23,7 @@ import train_test
 
 
 parser = argparse.ArgumentParser(description='e3_diffusion')
-parser.add_argument('--exp_name', type=str, default='debug_10')
+parser.add_argument('--exp_name', type=str, default='denoising_diffusion')
 parser.add_argument('--model', type=str, default='egnn_dynamics',
                     help='our_dynamics | schnet | simple_dynamics | '
                          'kernel_dynamics | egnn_dynamics |gnn_dynamics')
@@ -115,7 +115,7 @@ parser.add_argument('--sequential', action='store_true',
                     help='Organize data by size to reduce average memory usage.')
 args = parser.parse_args()
 
-data_file = './data/geom/geom_drugs_30.npy'
+data_file = './data/geom/geom_drugs_10.npy'
 
 if args.remove_h:
     raise NotImplementedError()
@@ -229,8 +229,8 @@ def main():
         model_ema = model
         model_ema_dp = model_dp
 
-    best_nll_val = 1e8
-    best_nll_test = 1e8
+    best_loss_val = 1e8
+    best_loss_test = 1e8
     for epoch in range(args.start_epoch, args.n_epochs):
         start_epoch = time.time()
         train_test.train_epoch(args, dataloaders['train'], epoch, model, model_dp, model_ema, ema, device, dtype,
@@ -239,20 +239,18 @@ def main():
         print(f"Epoch took {time.time() - start_epoch:.1f} seconds.")
 
         if epoch % args.test_epochs == 0:
-            if isinstance(model, en_diffusion.EnVariationalDiffusion):
-                wandb.log(model.log_info(), commit=True)
-
             if not args.break_train_epoch:
-                train_test.analyze_and_save(epoch, model_ema, nodes_dist, args, device,
-                                            dataset_info, prop_dist, n_samples=args.n_stability_samples)
-            nll_val = train_test.test(args, dataloaders['val'], epoch, model_ema_dp, device, dtype,
+                pass 
+                #train_test.analyze_and_save(epoch, model_ema, nodes_dist, args, device,
+                #                            dataset_info, prop_dist, n_samples=args.n_stability_samples)
+            loss_val = train_test.test(args, dataloaders['val'], epoch, model_ema_dp, device, dtype,
                                       property_norms, nodes_dist, partition='Val')
-            nll_test = train_test.test(args, dataloaders['test'], epoch, model_ema_dp, device, dtype,
+            loss_test = train_test.test(args, dataloaders['test'], epoch, model_ema_dp, device, dtype,
                                        property_norms, nodes_dist, partition='Test')
 
-            if nll_val < best_nll_val:
-                best_nll_val = nll_val
-                best_nll_test = nll_test
+            if loss_val < best_loss_val:
+                best_loss_val = loss_val
+                best_loss_test = loss_test
                 if args.save_model:
                     args.current_epoch = epoch + 1
                     utils.save_model(optim, 'outputs/%s/optim.npy' % args.exp_name)
@@ -269,11 +267,10 @@ def main():
                     utils.save_model(model_ema, 'outputs/%s/generative_model_ema_%d.npy' % (args.exp_name, epoch))
                 with open('outputs/%s/args_%d.pickle' % (args.exp_name, epoch), 'wb') as f:
                     pickle.dump(args, f)
-            print('Val loss: %.4f \t Test loss:  %.4f' % (nll_val, nll_test))
-            print('Best val loss: %.4f \t Best test loss:  %.4f' % (best_nll_val, best_nll_test))
-            wandb.log({"Val loss ": nll_val}, commit=True)
-            wandb.log({"Test loss ": nll_test}, commit=True)
-            wandb.log({"Best cross-validated test loss ": best_nll_test}, commit=True)
+            print('Val loss: %.4f \t Test loss:  %.4f' % (loss_val, loss_test))
+            print('Best val loss: %.4f \t Best test loss:  %.4f' % (best_loss_val, best_loss_test))
+            wandb.log({"Val loss ": loss_val}, commit=True)
+            wandb.log({"Test loss ": loss_test}, commit=True)
 
 
 if __name__ == "__main__":

@@ -46,6 +46,44 @@ class EGNN_dynamics_QM9(nn.Module):
     def unwrap_forward(self):
         return self._forward
 
+    def data_forward(self, t, xh, node_mask, edge_mask, context):
+        '''
+        Return h, x from egnn. No dynamics!!
+        '''
+        bs, n_nodes, dims = xh.shape
+        h_dims = dims - self.n_dims
+        edges = self.get_adj_matrix(n_nodes, bs, self.device)
+        edges = [x.to(self.device) for x in edges]
+        node_mask = node_mask.view(bs*n_nodes, 1)
+        edge_mask = edge_mask.view(bs*n_nodes*n_nodes, 1)
+        xh = xh.view(bs*n_nodes, -1).clone() * node_mask
+        x = xh[:, 0:self.n_dims].clone()
+        if h_dims == 0:
+            h = torch.ones(bs*n_nodes, 1).to(self.device)
+        else:
+            h = xh[:, self.n_dims:].clone()
+
+        if self.condition_time:
+            if np.prod(t.size()) == 1:
+                # t is the same for all elements in batch.
+                h_time = torch.empty_like(h[:, 0:1]).fill_(t.item())
+            else:
+                # t is different over the batch dimension.
+                h_time = t.view(bs, 1).repeat(1, n_nodes)
+                h_time = h_time.view(bs * n_nodes, 1)
+            h = torch.cat([h, h_time], dim=1)
+
+        if context is not None:
+            # We're conditioning, awesome!
+            context = context.view(bs*n_nodes, self.context_node_nf)
+            h = torch.cat([h, context], dim=1)
+
+        h_final, x_final = self.egnn(h, x, edges, node_mask=node_mask, edge_mask=edge_mask)
+
+        x_final = x_final * node_mask
+        x_final = x_final.view(bs, n_nodes, -1)
+        return x_final 
+
     def _forward(self, t, xh, node_mask, edge_mask, context):
         bs, n_nodes, dims = xh.shape
         h_dims = dims - self.n_dims
