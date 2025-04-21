@@ -1,5 +1,4 @@
 # Heat kernel diffusion for 3D structure super resolution
-Note: Code adadpted from e3_diffusion_for_molecules.
 
 ## Introduction
 A fundamental limitation to analyzing and understanding molecular structures is the resolution under which the molecular structure is imaged. For some experimental datasets, the microscopy imaging process is noisy and the imaging equipment poses a fundamental signal bottleneck, preventing detailed understanding of the molecular structure. To resolve this, we propose a heat kernel based denoising diffusion model that learns to super-resolve 3D molecular structures. Our motivation is to exploit high resolution molecular structures as a prior that we can learn an accurate forward process from (i.e high resolution to low resolution). Then, we train a denoising diffusion model to reverse this process, allowing us to super-resolve a low resolution structure to a high resolution one. Drawing from scale space theory, we utilize the heat equation as a nice forward process that progressively removes higher frequency details. We adapt the heat equation and define our forward process as spatial gaussian convolutions of increasing radius. 
